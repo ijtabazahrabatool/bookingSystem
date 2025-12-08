@@ -98,7 +98,6 @@ async function getProviderTimezone(providerId) {
   const providerUser = await User.findById(providerId).lean();
   if (!providerUser) {
     console.log(`Provider user not found: ${providerId}`);
-    // Return a default timezone to prevent crashes
     return "UTC";
   }
   return providerUser?.providerProfile?.timezone || "UTC";
@@ -196,6 +195,8 @@ async function getAvailableSlots(providerIdStr, dateStr, serviceId) {
   const candidateLocalTimes = generateLocalSlots(availability.startTime, availability.endTime, stepMinutes, serviceDuration);
   console.log(`Generated ${candidateLocalTimes.length} candidate time slots for ${dateStr}`);
 
+  const now = new Date(); // Current time in UTC
+
   const results = [];
   for (const localTime of candidateLocalTimes) {
     if (isSlotUnavailable(localTime, serviceDuration, availability)) {
@@ -204,6 +205,14 @@ async function getAvailableSlots(providerIdStr, dateStr, serviceId) {
 
     const startAtUTC = parseLocalDateTimeToUTC(dateStr, localTime, timezone);
     const endAtUTC = addMinutes(startAtUTC, serviceDuration);
+
+    // ----------------------------------------------------
+    // BUG FIX: Filter out slots that are in the past
+    // ----------------------------------------------------
+    if (startAtUTC < now) {
+      console.log(`Slot ${localTime} skipped - time has passed`);
+      continue;
+    }
 
     const conflict = await hasBookingConflict(providerId, startAtUTC, endAtUTC);
     if (conflict) {
