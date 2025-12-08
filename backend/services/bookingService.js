@@ -1,12 +1,9 @@
 // services/bookingService.js
 const { v4: uuidv4 } = require("uuid");
 const Booking = require("../models/Booking");
-const { getSlotLock, setSlotLock, delSlotLock } = require("../lib/lock");
-const Booking = require("../models/Booking");
+const { getSlotLock, delSlotLock } = require("../lib/lock");
 const Service = require("../models/Service");
-const { getSlotLock, releaseSlotLock } = require("../lib/lock"); // You might need to export releaseSlotLock from lib/lock.js
-const redisClient = require("../lib/redisClient"); // Need direct redis access to verify token
-const redis = require("../lib/redisClient");
+const redisClient = require("../lib/redisClient"); // Use redisClient consistently
 
 const HOLD_TTL_SECONDS = parseInt(process.env.HOLD_TTL_SECONDS || "300", 10);
 
@@ -19,12 +16,19 @@ const HOLD_TTL_SECONDS = parseInt(process.env.HOLD_TTL_SECONDS || "300", 10);
  * @throws {Error} If a conflicting booking is found.
  */
 async function _checkBookingConflict(bookingData) {
-  const conflict = await Booking.findOne({
+  const query = {
     providerId: bookingData.providerId,
     startAt: { $lt: bookingData.endAt },
     endAt: { $gt: bookingData.startAt },
     status: { $in: ["Held", "Pending", "Confirmed"] },
-  }).lean();
+  };
+
+  // FIX: If the user provided a holdToken, do NOT count that specific hold as a conflict.
+  if (bookingData.holdToken) {
+    query.holdToken = { $ne: bookingData.holdToken };
+  }
+
+  const conflict = await Booking.findOne(query).lean();
 
   if (conflict) {
     const err = new Error("Slot not available (already booked)");
@@ -43,14 +47,14 @@ async function _acquireBookingLock(bookingData) {
   const lockKey = `slot:${bookingData.providerId}:${bookingData.startAt.toISOString()}`;
   
   // 1. Check if lock exists
-  const currentLockToken = await redis.get(lockKey);
+  const currentLockToken = await redisClient.get(lockKey);
 
   if (currentLockToken) {
     // 2. If user provided a token, check if it MATCHES the lock
     if (bookingData.holdToken && currentLockToken === bookingData.holdToken) {
        console.log("Token matches! Allowing booking to proceed.");
        // Delete lock so we can save to DB without conflict
-       await redis.del(lockKey); 
+       await redisClient.del(lockKey);
        return null; // Return null means "No new lock needed, proceed"
     } else {
        // Lock exists and token is missing or wrong
@@ -82,13 +86,20 @@ async function createBooking({
   const endAtDate = new Date(startAtDate.getTime() + service.duration * 60000);
 
   // 2. Check Database Conflicts (Permanent Bookings)
-  const existingBooking = await Booking.findOne({
+  const conflictQuery = {
     providerId,
     status: { $in: ["Confirmed", "Pending", "Held"] },
     $or: [
       { startAt: { $lt: endAtDate }, endAt: { $gt: startAtDate } }
     ]
-  });
+  };
+
+// IF the user has a holdToken, do NOT count that specific hold as a conflict
+  if (holdToken) {
+    conflictQuery.holdToken = { $ne: holdToken };
+  }
+
+  const existingBooking = await Booking.findOne(conflictQuery);
 
   if (existingBooking) {
     throw new Error("Slot is already booked.");
@@ -97,22 +108,14 @@ async function createBooking({
   // 3. Check Redis Lock (Temporary Holds)
   const lockKey = `slot:${providerId}:${startAtDate.toISOString()}`;
   
-  // We check the lock manually
   const currentLockValue = await redisClient.get(lockKey);
 
   if (currentLockValue) {
-    // There is a lock. Is it OUR lock?
     if (holdToken && currentLockValue === holdToken) {
-      // YES! It matches. We own this hold. Proceed.
       console.log("Valid hold token provided. Converting hold to booking.");
-      
-      // OPTIONAL: Delete the lock now, or let it expire. 
-      // Better to delete it so the slot is technically "free" for this split second 
-      // before the DB record is saved, but we save the DB record immediately after.
       await redisClient.del(lockKey);
     } else {
-      // NO. It's locked by someone else, or token is missing/wrong.
-      throw new Error("This slot is temporarily held by another customer. Please try again in a few minutes.");
+      throw new Error("This slot is temporarily held by another customer.");
     }
   }
 
@@ -126,11 +129,12 @@ async function createBooking({
     customerPhone,
     startAt: startAtDate,
     endAt: endAtDate,
-    status: "Confirmed" // or "Pending" depending on your flow
+    status: "Confirmed" 
   });
 
   return newBooking;
 }
+
 
 /**
  * Retrieves all bookings for a user, filtered by their role.

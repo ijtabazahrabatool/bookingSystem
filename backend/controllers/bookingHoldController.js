@@ -66,7 +66,7 @@ async function holdSlot(req, res) {
       message: "Slot reserved",
       bookingId: booking._id,
       holdToken,
-      holdExpiresAt
+      holdExpiresAt,
       expiresInSeconds: HOLD_TTL_SECONDS
     });
   } catch (err) {

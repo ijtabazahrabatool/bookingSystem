@@ -5,7 +5,7 @@ const Availability = require("../models/Availability");
 const Booking = require("../models/Booking");
 const Service = require("../models/Service");
 const User = require("../models/User");
-const { parseLocalDateTimeToUTC, formatTo12Hour} = require("../utils/time");
+const { parseLocalDateTimeToUTC, formatTo12Hour } = require("../utils/time"); 
 const { getSlotLock } = require("../lib/lock");
 
 /**
@@ -214,7 +214,7 @@ async function getAvailableSlots(providerIdStr, dateStr, serviceId) {
 
     results.push({
       time: localTime,            // "14:00" (Keep for backend logic)
-      displayTime: formatTo12Hour(localTime), // "2:00 PM" (Use this for UI)
+      displayTime: formatTo12Hour(localTime), // "02:00 PM" (NEW FIELD FOR UI)
       startAt: startAtUTC.toISOString(),
       endAt: endAtUTC.toISOString(),
       locked: locked,

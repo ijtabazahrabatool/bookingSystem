@@ -2,43 +2,6 @@
 const bookingService = require("../services/bookingService");
 
 /**
- * @desc    Create a new booking.
- * @route   POST /api/bookings
- * @access  Authenticated
- */
-exports.createBooking = async (req, res) => {
-  try {
-    // Extract holdToken from the body (Frontend must send this!)
-    const { 
-      providerId, 
-      serviceId, 
-      startAt, 
-      customerName, 
-      customerEmail, 
-      customerPhone,
-      holdToken // <--- NEW PARAMETER
-    } = req.body;
-
-    // Pass holdToken to the service
-    const booking = await bookingService.createBooking({
-      providerId,
-      serviceId,
-      startAt,
-      customerName,
-      customerEmail,
-      customerPhone,
-      userId: req.user ? req.user.userId : null,
-      holdToken // <--- PASS IT HERE
-    });
-
-    res.status(201).json({ message: "Booking created successfully", booking });
-  } catch (error) {
-    console.error("Create Booking Error:", error);
-    res.status(400).json({ message: error.message });
-  }
-};
-
-/**
  * @desc    Get all bookings for the authenticated user.
  * @route   GET /api/bookings
  * @access  Authenticated
@@ -49,7 +12,10 @@ const getAll = async (req, res) => {
     res.status(200).json(bookings);
   } catch (err) {
     console.error("Error fetching bookings:", err);
-    res.status(err.status || 500).json({ message: err.message || "Failed to fetch bookings" });
+    res.status(err.status || 500).json({
+        message: err.message || "Failed to fetch bookings",
+        error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 };
 
@@ -68,7 +34,10 @@ const updateStatus = async (req, res) => {
     res.status(200).json(booking);
   } catch (err) {
     console.error("Error updating booking:", err);
-    res.status(err.status || 500).json({ message: err.message || "Failed to update booking" });
+    res.status(err.status || 500).json({
+        message: err.message || "Failed to update booking",
+        error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 };
 
@@ -87,7 +56,10 @@ const cancel = async (req, res) => {
     res.status(200).json({ message: "Booking cancelled successfully", booking });
   } catch (err) {
     console.error("Error cancelling booking:", err);
-    res.status(err.status || 500).json({ message: err.message || "Failed to cancel booking" });
+    res.status(err.status || 500).json({
+        message: err.message || "Failed to cancel booking",
+        error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 };
 
@@ -102,21 +74,32 @@ const remove = async (req, res) => {
     res.status(200).json({ message: "Booking deleted successfully" });
   } catch (err) {
     console.error("Error deleting booking:", err);
-    res.status(err.status || 500).json({ message: err.message || "Failed to delete booking" });
+    res.status(err.status || 500).json({
+        message: err.message || "Failed to delete booking",
+        error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 };
 
+/**
+ * @desc    Create a new booking, potentially using a hold token.
+ * @route   POST /api/bookings
+ * @access  Authenticated
+ */
 const create = async (req, res) => {
   try {
-    // Extract holdToken from body
-    const { holdToken, ...bookingData } = req.body; 
-    
-    // Pass it to the service
-    const booking = await bookingService.createBooking({ ...bookingData, holdToken }, req.user);
-    
+    const bookingData = {
+      ...req.body,
+      userId: req.user ? req.user.userId : null,
+    };
+    const booking = await bookingService.createBooking(bookingData);
     res.status(201).json(booking);
   } catch (err) {
-    // ... error handling
+    console.error("Create Booking Error:", err);
+    res.status(err.status || 400).json({
+      message: err.message || "Failed to create booking",
+      error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 };
 
