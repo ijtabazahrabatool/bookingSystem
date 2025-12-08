@@ -2,8 +2,15 @@
 const { v4: uuidv4 } = require("uuid");
 const Booking = require("../models/Booking");
 const { getSlotLock, setSlotLock, delSlotLock } = require("../lib/lock");
+const Booking = require("../models/Booking");
+const Service = require("../models/Service");
+const { getSlotLock, releaseSlotLock } = require("../lib/lock"); // You might need to export releaseSlotLock from lib/lock.js
+const redisClient = require("../lib/redisClient"); // Need direct redis access to verify token
+const redis = require("../lib/redisClient");
 
 const HOLD_TTL_SECONDS = parseInt(process.env.HOLD_TTL_SECONDS || "300", 10);
+
+
 
 /**
  * Checks for existing bookings that conflict with a new booking's time slot.
@@ -33,29 +40,27 @@ async function _checkBookingConflict(bookingData) {
  * @returns {Promise<{holdToken: string, holdExpiresAt: Date}|null>} Lock details or null if locking fails.
  */
 async function _acquireBookingLock(bookingData) {
-  try {
-    const lockKey = `slot:${bookingData.providerId}:${bookingData.startAt.toISOString()}`;
-    const existingLock = await getSlotLock(lockKey);
+  const lockKey = `slot:${bookingData.providerId}:${bookingData.startAt.toISOString()}`;
+  
+  // 1. Check if lock exists
+  const currentLockToken = await redis.get(lockKey);
 
-    if (existingLock) {
-      const err = new Error("Slot momentarily locked by another user");
-      err.status = 409;
-      throw err;
+  if (currentLockToken) {
+    // 2. If user provided a token, check if it MATCHES the lock
+    if (bookingData.holdToken && currentLockToken === bookingData.holdToken) {
+       console.log("Token matches! Allowing booking to proceed.");
+       // Delete lock so we can save to DB without conflict
+       await redis.del(lockKey); 
+       return null; // Return null means "No new lock needed, proceed"
+    } else {
+       // Lock exists and token is missing or wrong
+       const err = new Error("Slot momentarily locked by another user");
+       err.status = 409;
+       throw err;
     }
-
-    const holdToken = uuidv4();
-    const locked = await setSlotLock(lockKey, holdToken, HOLD_TTL_SECONDS);
-
-    if (locked) {
-      return {
-        holdToken,
-        holdExpiresAt: new Date(Date.now() + HOLD_TTL_SECONDS * 1000),
-      };
-    }
-  } catch (lockErr) {
-    if (lockErr.status === 409) throw lockErr; // Re-throw conflict errors
-    console.warn("Redis lock check failed, continuing without lock:", lockErr.message);
   }
+  // 3. If no lock exists, create one (standard logic)
+  // ... (keep existing creation logic if needed, but for "Create Booking" we usually just save to DB)
   return null;
 }
 
@@ -65,34 +70,67 @@ async function _acquireBookingLock(bookingData) {
  * @param {object} user - The user creating the booking.
  * @returns {Promise<Booking>} The newly created booking.
  */
-const createBooking = async (data, user) => {
-  const bookingData = {
-    ...data,
-    userId: user.userId,
-    startAt: data.startAt ? new Date(data.startAt) : undefined,
-    endAt: data.endAt ? new Date(data.endAt) : undefined,
-    status: data.status || "Pending",
-  };
+async function createBooking({ 
+  providerId, serviceId, startAt, customerName, customerEmail, customerPhone, userId, holdToken 
+}) {
+  const startAtDate = new Date(startAt);
+  
+  // 1. Get Service Details
+  const service = await Service.findById(serviceId);
+  if (!service) throw new Error("Service not found");
+  
+  const endAtDate = new Date(startAtDate.getTime() + service.duration * 60000);
 
-  if (bookingData.startAt && bookingData.providerId) {
-    await _checkBookingConflict(bookingData);
-    const lockDetails = await _acquireBookingLock(bookingData);
-    if (lockDetails) {
-      bookingData.holdToken = lockDetails.holdToken;
-      bookingData.holdExpiresAt = lockDetails.holdExpiresAt;
+  // 2. Check Database Conflicts (Permanent Bookings)
+  const existingBooking = await Booking.findOne({
+    providerId,
+    status: { $in: ["Confirmed", "Pending", "Held"] },
+    $or: [
+      { startAt: { $lt: endAtDate }, endAt: { $gt: startAtDate } }
+    ]
+  });
+
+  if (existingBooking) {
+    throw new Error("Slot is already booked.");
+  }
+
+  // 3. Check Redis Lock (Temporary Holds)
+  const lockKey = `slot:${providerId}:${startAtDate.toISOString()}`;
+  
+  // We check the lock manually
+  const currentLockValue = await redisClient.get(lockKey);
+
+  if (currentLockValue) {
+    // There is a lock. Is it OUR lock?
+    if (holdToken && currentLockValue === holdToken) {
+      // YES! It matches. We own this hold. Proceed.
+      console.log("Valid hold token provided. Converting hold to booking.");
+      
+      // OPTIONAL: Delete the lock now, or let it expire. 
+      // Better to delete it so the slot is technically "free" for this split second 
+      // before the DB record is saved, but we save the DB record immediately after.
+      await redisClient.del(lockKey);
+    } else {
+      // NO. It's locked by someone else, or token is missing/wrong.
+      throw new Error("This slot is temporarily held by another customer. Please try again in a few minutes.");
     }
   }
 
-  const { date, time, customer, ...cleanData } = bookingData;
+  // 4. Create the Booking in DB
+  const newBooking = await Booking.create({
+    providerId,
+    serviceId,
+    customerId: userId || null,
+    customerName,
+    customerEmail,
+    customerPhone,
+    startAt: startAtDate,
+    endAt: endAtDate,
+    status: "Confirmed" // or "Pending" depending on your flow
+  });
 
-  const booking = await Booking.create(cleanData);
-  await booking.populate([
-    { path: "serviceId" },
-    { path: "userId", select: "name email" },
-    { path: "providerId", select: "name email" },
-  ]);
-  return booking;
-};
+  return newBooking;
+}
 
 /**
  * Retrieves all bookings for a user, filtered by their role.

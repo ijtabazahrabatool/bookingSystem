@@ -63,10 +63,11 @@ async function holdSlot(req, res) {
     });
 
     res.status(201).json({
-      message: "Slot held",
+      message: "Slot reserved",
       bookingId: booking._id,
       holdToken,
       holdExpiresAt
+      expiresInSeconds: HOLD_TTL_SECONDS
     });
   } catch (err) {
     console.error("holdSlot error", err);

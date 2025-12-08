@@ -5,7 +5,7 @@ const Availability = require("../models/Availability");
 const Booking = require("../models/Booking");
 const Service = require("../models/Service");
 const User = require("../models/User");
-const { parseLocalDateTimeToUTC } = require("../utils/time");
+const { parseLocalDateTimeToUTC, formatTo12Hour} = require("../utils/time");
 const { getSlotLock } = require("../lib/lock");
 
 /**
@@ -168,6 +168,7 @@ async function isSlotLocked(providerId, startAtUTC) {
  * @param {string|null} serviceId - The ID of the service being booked.
  * @returns {Promise<object[]>} A list of available slots.
  */
+
 async function getAvailableSlots(providerIdStr, dateStr, serviceId) {
   const providerId = mongoose.Types.ObjectId.isValid(providerIdStr)
     ? new mongoose.Types.ObjectId(providerIdStr)
@@ -178,26 +179,17 @@ async function getAvailableSlots(providerIdStr, dateStr, serviceId) {
   const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const dayOfWeek = dayMap[dateObj.getDay()];
 
-  console.log(`Looking for availability: providerId=${providerId}, dayOfWeek=${dayOfWeek}, date=${dateStr}`);
-
   const availability = await getProviderAvailability(providerId, dayOfWeek);
-  if (!availability) {
-    console.log(`No availability found for provider ${providerId} on ${dayOfWeek}`);
-    return [];
-  }
-
-  console.log(`Found availability for ${dayOfWeek}: ${availability.startTime} - ${availability.endTime}, slotDuration: ${availability.slotDuration}`);
+  if (!availability) return [];
 
   const serviceDuration = await getServiceDuration(serviceId, availability.slotDuration || 30);
   const timezone = await getProviderTimezone(providerId);
-
   const stepMinutes = availability.slotDuration || 30;
+
   const candidateLocalTimes = generateLocalSlots(availability.startTime, availability.endTime, stepMinutes, serviceDuration);
-  console.log(`Generated ${candidateLocalTimes.length} candidate time slots for ${dateStr}`);
-
-  const now = new Date(); // Current time in UTC
-
+  const now = new Date(); // Current UTC time
   const results = [];
+
   for (const localTime of candidateLocalTimes) {
     if (isSlotUnavailable(localTime, serviceDuration, availability)) {
       continue;
@@ -206,31 +198,29 @@ async function getAvailableSlots(providerIdStr, dateStr, serviceId) {
     const startAtUTC = parseLocalDateTimeToUTC(dateStr, localTime, timezone);
     const endAtUTC = addMinutes(startAtUTC, serviceDuration);
 
-    // ----------------------------------------------------
-    // BUG FIX: Filter out slots that are in the past
-    // ----------------------------------------------------
+    // 1. Filter Past Slots
     if (startAtUTC < now) {
-      console.log(`Slot ${localTime} skipped - time has passed`);
-      continue;
+      continue; 
     }
 
+    // 2. Check Database Conflicts
     const conflict = await hasBookingConflict(providerId, startAtUTC, endAtUTC);
     if (conflict) {
-      console.log(`Slot ${localTime} skipped - already booked in DB`);
       continue;
     }
 
+    // 3. Check Temporary Redis Locks
     const locked = await isSlotLocked(providerId, startAtUTC);
 
     results.push({
-      time: localTime,
+      time: localTime,            // "14:00" (Keep for backend logic)
+      displayTime: formatTo12Hour(localTime), // "2:00 PM" (Use this for UI)
       startAt: startAtUTC.toISOString(),
       endAt: endAtUTC.toISOString(),
       locked: locked,
     });
   }
 
-  console.log(`Returning ${results.length} available slots (${results.filter((r) => !r.locked).length} unlocked, ${results.filter((r) => r.locked).length} locked)`);
   return results;
 }
 

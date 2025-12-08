@@ -28,4 +28,16 @@ function formatUTCToLocalTime(utcDate, timezone) {
   return format(zoned, "HH:mm", { timeZone: timezone });
 }
 
-module.exports = { parseLocalDateTimeToUTC, formatUTCToLocalTime };
+/**
+ * Converts "HH:mm" (24-hour) to "h:mm AM/PM" (12-hour).
+ * @param {string} hhmm - Time string (e.g., "14:30")
+ * @returns {string} Formatted time (e.g., "2:30 PM")
+ */
+function formatTo12Hour(hhmm) {
+  if (!hhmm) return "";
+  const [hours, minutes] = hhmm.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const h = hours % 12 || 12; // Convert 0 or 12 to 12
+  return `${h}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
+module.exports = { parseLocalDateTimeToUTC, formatUTCToLocalTime,formatTo12Hour };

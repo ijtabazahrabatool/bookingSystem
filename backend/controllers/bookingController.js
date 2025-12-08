@@ -6,13 +6,35 @@ const bookingService = require("../services/bookingService");
  * @route   POST /api/bookings
  * @access  Authenticated
  */
-const create = async (req, res) => {
+exports.createBooking = async (req, res) => {
   try {
-    const booking = await bookingService.createBooking(req.body, req.user);
-    res.status(201).json(booking);
-  } catch (err) {
-    console.error("Booking creation error:", err);
-    res.status(err.status || 500).json({ message: err.message || "Failed to create booking" });
+    // Extract holdToken from the body (Frontend must send this!)
+    const { 
+      providerId, 
+      serviceId, 
+      startAt, 
+      customerName, 
+      customerEmail, 
+      customerPhone,
+      holdToken // <--- NEW PARAMETER
+    } = req.body;
+
+    // Pass holdToken to the service
+    const booking = await bookingService.createBooking({
+      providerId,
+      serviceId,
+      startAt,
+      customerName,
+      customerEmail,
+      customerPhone,
+      userId: req.user ? req.user.userId : null,
+      holdToken // <--- PASS IT HERE
+    });
+
+    res.status(201).json({ message: "Booking created successfully", booking });
+  } catch (error) {
+    console.error("Create Booking Error:", error);
+    res.status(400).json({ message: error.message });
   }
 };
 
@@ -81,6 +103,20 @@ const remove = async (req, res) => {
   } catch (err) {
     console.error("Error deleting booking:", err);
     res.status(err.status || 500).json({ message: err.message || "Failed to delete booking" });
+  }
+};
+
+const create = async (req, res) => {
+  try {
+    // Extract holdToken from body
+    const { holdToken, ...bookingData } = req.body; 
+    
+    // Pass it to the service
+    const booking = await bookingService.createBooking({ ...bookingData, holdToken }, req.user);
+    
+    res.status(201).json(booking);
+  } catch (err) {
+    // ... error handling
   }
 };
 
