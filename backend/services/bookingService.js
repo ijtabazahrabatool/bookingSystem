@@ -1,7 +1,7 @@
 // services/bookingService.js
 const { v4: uuidv4 } = require("uuid");
 const Booking = require("../models/Booking");
-const { getSlotLock, delSlotLock } = require("../lib/lock");
+const { getSlotLock, setSlotLock, delSlotLock } = require("../lib/lock");
 const Service = require("../models/Service");
 const redisClient = require("../lib/redisClient"); // Use redisClient consistently
 
@@ -78,14 +78,12 @@ async function createBooking({
   providerId, serviceId, startAt, customerName, customerEmail, customerPhone, userId, holdToken 
 }) {
   const startAtDate = new Date(startAt);
-  
-  // 1. Get Service Details
   const service = await Service.findById(serviceId);
   if (!service) throw new Error("Service not found");
   
   const endAtDate = new Date(startAtDate.getTime() + service.duration * 60000);
 
-  // 2. Check Database Conflicts (Permanent Bookings)
+  // Check Conflict (Ignoring our own holdToken)
   const conflictQuery = {
     providerId,
     status: { $in: ["Confirmed", "Pending", "Held"] },
@@ -94,42 +92,40 @@ async function createBooking({
     ]
   };
 
-// IF the user has a holdToken, do NOT count that specific hold as a conflict
   if (holdToken) {
     conflictQuery.holdToken = { $ne: holdToken };
   }
 
   const existingBooking = await Booking.findOne(conflictQuery);
-
   if (existingBooking) {
     throw new Error("Slot is already booked.");
   }
 
-  // 3. Check Redis Lock (Temporary Holds)
+  // Handle Redis Lock
   const lockKey = `slot:${providerId}:${startAtDate.toISOString()}`;
-  
   const currentLockValue = await redisClient.get(lockKey);
 
   if (currentLockValue) {
     if (holdToken && currentLockValue === holdToken) {
-      console.log("Valid hold token provided. Converting hold to booking.");
       await redisClient.del(lockKey);
     } else {
       throw new Error("This slot is temporarily held by another customer.");
     }
   }
 
-  // 4. Create the Booking in DB
+  // Create Booking as PENDING
   const newBooking = await Booking.create({
     providerId,
     serviceId,
-    customerId: userId || null,
+    customerId: userId || null, // Handle guest or logged in user
+    userId: userId || null,      // Ensure consistency with your Schema
     customerName,
     customerEmail,
     customerPhone,
     startAt: startAtDate,
     endAt: endAtDate,
-    status: "Confirmed" 
+    status: "Pending", // <--- CHANGED TO PENDING
+    price: service.price
   });
 
   return newBooking;

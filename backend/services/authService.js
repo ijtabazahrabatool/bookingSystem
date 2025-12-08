@@ -2,7 +2,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { validatePassword, validateEmail, validatePhone } = require("../utils/validators");
-const { JWT_SECRET } = require("../middleware/auth");
 
 /**
  * Validates the data for user registration.
@@ -60,7 +59,7 @@ function _validateRegistrationData({ name, email, password, phone, countryCode }
 function _generateAuthToken(user) {
   return jwt.sign(
     { userId: user._id, email: user.email, role: user.role },
-    JWT_SECRET,
+    process.env.JWT_SECRET,
     { expiresIn: "7d" }
   );
 }
@@ -73,15 +72,19 @@ function _generateAuthToken(user) {
  * @private
  */
 function _createAuthResponse(user, token) {
+  const userPayload = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    phone: user.phone,
+  };
+  if (user.role === 'provider' && user.providerProfile) {
+    userPayload.providerProfile = { timezone: user.providerProfile.timezone };
+  }
   return {
     token,
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      phone: user.phone,
-    },
+    user: userPayload,
   };
 }
 
