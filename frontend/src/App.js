@@ -16,7 +16,7 @@ import AuthModalNew from "./components/AuthModalNew";
 import LandingPage from "./components/LandingPage";
 import About from "./components/About";
 // Removed ProtectedRoute import - using direct role checks instead
-import { getServices, getBookings, holdSlot, confirmBooking, updateBookingStatus, deleteBooking } from "./services/api";
+import { getServices, getBookings, updateBookingStatus, deleteBooking } from "./services/api";
 
 function App() {
   const { user, isAuthenticated, loading: authLoading } = useContext(AuthContext);
@@ -67,48 +67,6 @@ function App() {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Handle Booking Confirmation
-  const handleConfirmBooking = async (bookingData) => {
-    if (!isAuthenticated) {
-      setAuthMode("login");
-      setShowAuthModal(true);
-      return;
-    }
-    try {
-      // Step 1: Hold the slot
-      const holdResponse = await holdSlot({
-        ...bookingData,
-        // customerId is added on the backend from the token
-      });
-
-      const { bookingId, holdToken } = holdResponse.data;
-
-      // Step 2: Confirm the booking immediately
-      const confirmResponse = await confirmBooking(bookingId, holdToken);
-
-      // Update UI with the confirmed booking
-      setAppointments(prev => [confirmResponse.data, ...prev]);
-      setSelectedService(null); // Close the modal
-      setShowSuccessToast(true);
-      setTimeout(() => setShowSuccessToast(false), 4000);
-    } catch (error) {
-      console.error("Booking failed:", error);
-      if (error.response?.status === 401) {
-        setAuthMode("login");
-        setShowAuthModal(true);
-      } else {
-        // More specific error for slot already taken
-        const errorMessage = error.response?.data?.message || error.message || "Failed to save booking";
-        alert(`Error: ${errorMessage}`);
-        
-        // Optionally, refresh data if booking failed due to slot being taken
-        if (errorMessage.includes("taken") || errorMessage.includes("unavailable")) {
-          fetchData(); // Refetch bookings and services
-        }
-      }
     }
   };
 
@@ -309,7 +267,10 @@ function App() {
         <BookingModal 
           service={selectedService} 
           onClose={() => setSelectedService(null)} 
-          onConfirm={handleConfirmBooking} 
+          onConfirm={async () => {
+            // After a successful booking, refresh the list of appointments.
+            await fetchData();
+          }} 
         />
       )}
 

@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function ServiceCardNew({ service, onBook, isAuthenticated }) {
+export default function ServiceCardNew({ service, onBook }) {
   return (
     <div className="group bg-white rounded-2xl shadow-soft hover:shadow-medium transition-all duration-300 overflow-hidden border border-gray-100">
       {/* Image/Icon Section */}
@@ -66,13 +66,7 @@ export default function ServiceCardNew({ service, onBook, isAuthenticated }) {
 
         {/* Book Button */}
         <button
-          onClick={() => {
-            if (!isAuthenticated) {
-              alert("Please login to book a service");
-              return;
-            }
-            onBook(service);
-          }}
+          onClick={() => onBook(service)}
           className="w-full px-6 py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-all shadow-soft hover:shadow-medium transform hover:-translate-y-0.5"
         >
           Book Now
@@ -81,4 +75,3 @@ export default function ServiceCardNew({ service, onBook, isAuthenticated }) {
     </div>
   );
 }
-

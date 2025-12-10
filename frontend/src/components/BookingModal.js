@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from 'react-router-dom';
 
 import BookingHeader from './booking/BookingHeader';
 import BookingProgress from './booking/BookingProgress';
@@ -12,14 +13,17 @@ import { useDateSelection } from '../hooks/useDateSelection';
 import { useSlotFetching } from '../hooks/useSlotFetching';
 import { useSlotHolding } from '../hooks/useSlotHolding';
 import { useBookingConfirmation } from '../hooks/useBookingConfirmation';
+import { useToast } from './Toast';
 
 export default function BookingModal({ service, onClose, onConfirm }) {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [holdData, setHoldData] = useState(null);
   const [error, setError] = useState(null);
+  const { showToast } = useToast();
 
   const providerId = useProviderId(service);
   const dates = useDateSelection();
@@ -31,23 +35,37 @@ export default function BookingModal({ service, onClose, onConfirm }) {
       setHoldData(newHoldData);
       setSelectedSlot(slot);
       setTime(slot.time);
-      fetchSlots();
+      // FIX: Auto-advance to the confirmation step (Step 3)
+      setStep(3); 
     },
   });
 
   const { isSubmitting, handleBook } = useBookingConfirmation({
     onError: (message) => {
         setError(message);
-        if (message.includes("expired")) {
+        if (message && (message.includes("expired") || message.includes("taken"))) {
             setHoldData(null);
             setTime("");
             setSelectedSlot(null);
             fetchSlots();
+            setStep(2);
         }
     },
     onSuccess: async (bookingDetails) => {
-        await onConfirm(bookingDetails);
+        // 1. Show a success message to the user
+        showToast("Booking request sent to provider!", "success");
+
+        // 2. Notify the parent component to refresh its data
+        if (onConfirm) {
+          await onConfirm(bookingDetails);
+        }
         setHoldData(null);
+
+        // 3. Navigate to the user's dashboard
+        navigate('/dashboard'); // Or '/my-bookings' depending on your routes
+        
+        // 4. Close the modal
+        onClose();
     }
   });
 
@@ -99,7 +117,8 @@ export default function BookingModal({ service, onClose, onConfirm }) {
             <ConfirmationStep
               service={service}
               date={date}
-              time={time}
+              // FIX: Show AM/PM time if available
+              time={selectedSlot?.displayTime || time}
             />
           )}
         </div>

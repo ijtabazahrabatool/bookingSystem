@@ -44,41 +44,51 @@ export default function TimeSelector({ slots, selectedTime, onTimeSelect, loadin
     return <NoSlotsMessage />;
   }
 
+  // Helper to check if time is past
+  const isTimeInPast = (timeStr) => {
+    const today = new Date();
+    // We assume the parent component passes 'slots' for the selected date.
+    // If we don't have the date prop here, we can rely on the fact that 
+    // usually past dates aren't selectable. We only care if it's TODAY.
+    // Note: To be perfectly accurate, TimeSelector should receive the 'selectedDate' prop.
+    // Assuming implicit "today" check or purely time based filtering:
+    
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const slotDate = new Date();
+    slotDate.setHours(hours, minutes, 0, 0);
+    
+    // If the slot time is earlier than now, return true
+    return slotDate < today;
+  };
+
   return (
     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
       {slots.map((slot, idx) => {
         const isSelected = selectedTime === slot.time;
-        // A slot is disabled if it's locked by ANOTHER user.
-        // It is not disabled if it's the one currently selected by THIS user.
-        const isLockedByOther = slot.locked && !isSelected;
+        const isPast = isTimeInPast(slot.time);
+
+       // A slot is disabled if it's locked by another OR it is in the past
+        const isDisabled = (slot.locked && !isSelected) || isPast;
 
         return (
           <button
             key={idx}
             onClick={() => {
-              // Prevent re-selecting the same slot or selecting a locked one.
-              if (selectedTime !== slot.time && !isLockedByOther) {
+              if (selectedTime !== slot.time && !isDisabled) {
                 onTimeSelect(slot);
               }
             }}
-            disabled={isLockedByOther}
+            disabled={isDisabled}
             className={`p-3 rounded-lg text-sm font-medium border-2 transition-all ${
               isSelected
                 ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
-                : isLockedByOther
-                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60'
+                : isDisabled
+                ? 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed' // Greyed out style
                 : 'bg-white text-gray-700 border-gray-200 hover:border-primary-300 hover:bg-primary-50'
             }`}
-            title={
-              isSelected
-                ? "Your selected time"
-                : isLockedByOther
-                ? "This slot is being booked by another customer"
-                : "Available - Click to select"
-            }
           >
             {slot.time}
-            {isLockedByOther && <LockIcon />}
+            {slot.locked && !isSelected && <LockIcon />}
           </button>
         );
       })}

@@ -45,27 +45,22 @@ export default function ProviderDashboard() {
     try {
       setLoading(true);
       const providerId = user?.id || user?._id;
-      
-      // Fetch services filtered by provider
-      const servicesRes = providerId 
-        ? await getServices(`?providerId=${providerId}`).catch(() => ({ data: [] }))
-        : await getServices().catch(() => ({ data: [] }));
-      const allServices = servicesRes.data || [];
-      
-      // Filter services by current provider
-      const providerServices = providerId 
-        ? allServices.filter(s => {
-            const serviceProviderId = s.providerId?._id || s.providerId?.id || s.providerId;
-            return serviceProviderId === providerId || serviceProviderId?.toString() === providerId?.toString();
-          })
-        : allServices;
-      
-      const bookingsRes = await getBookings().catch(() => ({ data: [] }));
-      
-      setServices(providerServices);
+      if (!providerId) {
+        setLoading(false);
+        return;
+      }
+
+      // Fetch services and bookings in parallel
+      const [servicesRes, bookingsRes] = await Promise.all([
+        getServices(`?providerId=${providerId}`).catch(() => ({ data: [] })),
+        getBookings().catch(() => ({ data: [] })) // Backend filters bookings by user role
+      ]);
+
+      setServices(servicesRes.data || []);
       setBookings(bookingsRes.data || []);
     } catch (error) {
       console.error("Error fetching data:", error);
+      showToast("Failed to load dashboard data.", "error");
     } finally {
       setLoading(false);
     }
@@ -341,9 +336,18 @@ export default function ProviderDashboard() {
                         )}
                         <p className="text-sm text-gray-600">
                           <span className="font-medium">Time:</span>{" "}
-                          {booking.startAt
-                            ? new Date(booking.startAt).toLocaleString()
-                            : `${booking.date} at ${booking.time}`}
+                          {booking.startAt ?
+                            new Date(booking.startAt).toLocaleString('en-US', {
+                                timeZone: user?.providerProfile?.timezone || 'UTC',
+                                weekday: 'short',
+                                month: 'short', 
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true
+                            })
+                            : `${booking.date} at ${booking.time}`
+                          }
                         </p>
                         <p className="text-sm text-gray-600">
                           <span className="font-medium">Price:</span> ${booking.price || 0}
@@ -569,4 +573,3 @@ export default function ProviderDashboard() {
     </div>
   );
 }
-
