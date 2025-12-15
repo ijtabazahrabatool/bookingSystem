@@ -88,10 +88,16 @@ const remove = async (req, res) => {
  */
 const create = async (req, res) => {
   try {
+    if (req.user && req.user.role === 'provider') {
+      return res.status(403).json({ 
+        message: "Providers are not allowed to make bookings. Please login as a customer." 
+      });
+    }
     const bookingData = {
       ...req.body,
       userId: req.user ? req.user.userId : null,
     };
+    
     const booking = await bookingService.createBooking(bookingData);
     res.status(201).json(booking);
   } catch (err) {

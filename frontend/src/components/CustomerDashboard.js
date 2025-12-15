@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { getServices, getBookings, cancelBooking } from "../services/api";
 import { SkeletonCard } from "./LoadingSkeleton";
 import { useToast } from "./Toast";
 import BookingModal from "./BookingModal";
+import { AuthContext } from "../context/AuthContext";
 
 export default function CustomerDashboard() {
   const [services, setServices] = useState([]);
   const { showToast } = useToast();
+  const { user } = useContext(AuthContext);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("browse"); // browse, bookings
@@ -106,8 +108,14 @@ export default function CustomerDashboard() {
                 {services.map(service => (
                   <div
                     key={service._id}
-                    onClick={() => setServiceToBook(service)}
-                    className="bg-white rounded-xl p-6 shadow-soft hover:shadow-medium transition-all cursor-pointer border border-gray-200 hover:border-primary-300"
+                    onClick={() => {
+                    if (user?.role !== 'provider') {
+                        setServiceToBook(service);
+                        }
+                    }}
+                    className={`bg-white rounded-xl p-6 shadow-soft transition-all border border-gray-200 
+                  ${user?.role === 'provider' ? 'opacity-75 cursor-default' : 'hover:shadow-medium cursor-pointer hover:border-primary-300'}
+                    `}
                   >
                     <div className="text-4xl mb-4">{service.image || "💇"}</div>
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">{service.name}</h3>
@@ -120,7 +128,6 @@ export default function CustomerDashboard() {
                 ))}
               </div>
             </div>
-          )}
         </div>
       )}
 

@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
 
 export default function ServiceCard({ service, onBook }) {
+  const { user } = useContext(AuthContext);
   return (
     <div className="group relative bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-6 flex flex-col items-start overflow-hidden">
       <div className="absolute top-0 right-0 bg-indigo-50 w-24 h-24 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
@@ -27,15 +29,23 @@ export default function ServiceCard({ service, onBook }) {
           <span className="text-slate-400 text-xs">Duration</span>
           <span className="text-sm font-medium text-slate-700">{service.duration} min</span>
         </div>
-        <button 
-          onClick={() => onBook(service)}
-          className="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20"
-        >
-          Book
-        </button>
+        {user?.role === 'provider' ? (
+           <button 
+             disabled
+             className="px-4 py-2 bg-slate-100 text-slate-400 text-sm font-medium rounded-lg cursor-not-allowed"
+           >
+             Provider
+           </button>
+        ) : (
+           <button 
+             onClick={() => onBook(service)}
+             className="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20"
+           >
+             Book
+           </button>
+        )}
       </div>
     </div>
   );
 }
-
 

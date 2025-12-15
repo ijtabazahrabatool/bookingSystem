@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useContext } from "react"; 
+import { AuthContext } from "../context/AuthContext";
 
 export default function ServiceCardNew({ service, onBook }) {
+  const { user } = useContext(AuthContext);
   return (
     <div className="group bg-white rounded-2xl shadow-soft hover:shadow-medium transition-all duration-300 overflow-hidden border border-gray-100">
       {/* Image/Icon Section */}
@@ -65,12 +67,21 @@ export default function ServiceCardNew({ service, onBook }) {
         </div>
 
         {/* Book Button */}
-        <button
-          onClick={() => onBook(service)}
-          className="w-full px-6 py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-all shadow-soft hover:shadow-medium transform hover:-translate-y-0.5"
-        >
-          Book Now
-        </button>
+        {user?.role === 'provider' ? (
+          <button
+            disabled
+            className="w-full px-6 py-3 bg-gray-100 text-gray-400 rounded-xl font-semibold cursor-not-allowed"
+          >
+            Provider View Only
+          </button>
+        ) : (
+          <button
+            onClick={() => onBook(service)}
+            className="w-full px-6 py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-all shadow-soft hover:shadow-medium transform hover:-translate-y-0.5"
+          >
+            Book Now
+          </button>
+        )}
       </div>
     </div>
   );
