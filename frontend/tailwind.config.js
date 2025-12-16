@@ -1,36 +1,39 @@
 /** @type {import('tailwindcss').Config} */
-// SAFE UI CHANGE — NO LOGIC IMPACT
 module.exports = {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'], // Keep Inter
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       colors: {
-        // Fresha-inspired Palette
         primary: {
-          50: '#f4f7fa',
-          100: '#e3e8f0',
-          500: '#0f172a', // Dark Navy (Text/Primary Actions)
-          600: '#020617', // Black/Midnight
+          50: '#F2F2F7', 
+          100: '#E5E5EA',
+          500: '#0D1117', // Near Black (style primary)
+          600: '#000000', // True Black
         },
         accent: {
-          500: '#22c55e', // Success Green (Booking confirmed)
-          600: '#16a34a',
+          500: '#10B981', // Emerald green for actions
         },
         gray: {
-          50: '#f9fafb', // Background
-          100: '#f3f4f6', // Cards
-          200: '#e5e7eb', // Borders
-          500: '#6b7280', // Subtext
-          900: '#111827', // Headings
+          50: '#F9FAFB',
+          100: '#F3F4F6', 
+          200: '#E5E7EB',
+          300: '#D1D5DB',
+          500: '#6B7280',
+          800: '#1F2937',
+          900: '#111827',
         }
       },
       boxShadow: {
-        'soft': '0 1px 3px rgba(0,0,0,0.05)',
-        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02)',
-        'elevated': '0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.01)',
+        'soft': '0 2px 8px rgba(0,0,0,0.04)',
+        'card': '0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.02)',
+        'dropdown': '0 10px 40px -10px rgba(0,0,0,0.15)',
+      },
+      borderRadius: {
+        'xl': '1rem',
+        '2xl': '1.5rem',
       }
     },
   },
