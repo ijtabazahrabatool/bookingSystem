@@ -41,10 +41,10 @@ export default function Navbar({ currentView, setView, onLogin, onSignup }) {
           {/* LEFT: LOGO */}
           <div className="flex items-center cursor-pointer min-w-fit" onClick={() => setView('home')}>
             <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center text-white mr-2">
-              <span className="font-bold text-xl tracking-tighter">Fb</span>
+              <span className="font-bold text-xl tracking-tighter">Lb</span>
             </div>
             <span className="text-xl font-bold text-gray-900 tracking-tight hidden sm:block">
-              FreshaBook
+              LuxeBook
             </span>
           </div>
 

@@ -203,12 +203,12 @@ export default function ProviderDashboard() {
           <h2 className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-4">Menu</h2>
           <nav className="space-y-1">
             {[
-              { id: 'overview', icon: '📊', label: 'Dashboard' },
-              { id: 'queue', icon: '⚡', label: 'Live Queue' },
-              { id: 'bookings', icon: '📅', label: 'Calendar' },
-              { id: 'services', icon: '💇', label: 'Services' },
-              { id: 'availability', icon: '🕒', label: 'Availability' },
-              { id: 'revenue', icon: '💰', label: 'Finances' },
+              { id: 'overview', icon: 'fa-chart-pie', label: 'Dashboard' },
+              { id: 'queue', icon: 'fa-bolt', label: 'Live Queue' },
+              { id: 'bookings', icon: 'fa-calendar-days', label: 'Calendar' },
+              { id: 'services', icon: 'fa-scissors', label: 'Services' },
+              { id: 'availability', icon: 'fa-clock', label: 'Availability' },
+              { id: 'revenue', icon: 'fa-dollar-sign', label: 'Finances' },
             ].map((item) => (
               <button
                 key={item.id}
@@ -219,7 +219,9 @@ export default function ProviderDashboard() {
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 }`}
               >
-                <span className="text-lg">{item.icon}</span>
+                <i className={`fa-solid ${item.icon} w-5 text-center text-base ${
+                  activeTab === item.id ? 'text-white' : 'text-gray-400'
+                }`}></i>
                 {item.label}
               </button>
             ))}
@@ -324,7 +326,7 @@ export default function ProviderDashboard() {
                      )}
                      {entry.status !== 'COMPLETED' && (
                         <button onClick={() => handleQueueStatus(entry._id, "SKIPPED")} className="p-2 text-gray-400 hover:text-gray-600 transition-colors" title="Skip">
-                          <span className="text-xl">⏭️</span>
+                          <i className="fa-solid fa-forward"></i>
                         </button>
                      )}
                   </div>
