@@ -195,483 +195,264 @@ export default function ProviderDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Provider Dashboard</h1>
-        <p className="text-gray-600">Manage your services and bookings</p>
-      </div>
+    <div className="flex h-[calc(100vh-64px)] bg-gray-50 overflow-hidden">
+      
+      {/* 🧭 NEW LEFT SIDEBAR (Replaces Top Tabs) */}
+      <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
+        <div className="p-6">
+          <h2 className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-4">Menu</h2>
+          <nav className="space-y-1">
+            {[
+              { id: 'overview', icon: '📊', label: 'Dashboard' },
+              { id: 'queue', icon: '⚡', label: 'Live Queue' },
+              { id: 'bookings', icon: '📅', label: 'Calendar' },
+              { id: 'services', icon: '💇', label: 'Services' },
+              { id: 'availability', icon: '🕒', label: 'Availability' },
+              { id: 'revenue', icon: '💰', label: 'Finances' },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all ${
+                  activeTab === item.id
+                    ? "bg-primary-600 text-white shadow-soft"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
+              >
+                <span className="text-lg">{item.icon}</span>
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </aside>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl p-6 shadow-soft border-l-4 border-primary-500">
-          <p className="text-sm text-gray-600 mb-1">Total Bookings</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.totalBookings}</p>
+      {/* MAIN CONTENT AREA */}
+      <main className="flex-1 overflow-y-auto p-4 md:p-8">
+        
+        {/* Mobile Tab Fallback */}
+        <div className="md:hidden flex overflow-x-auto gap-2 mb-6 pb-2">
+           {["overview", "queue", "bookings", "services", "availability", "revenue"].map(tab => (
+              <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-full whitespace-nowrap text-sm ${activeTab === tab ? 'bg-primary-600 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+           ))}
         </div>
-        <div className="bg-white rounded-xl p-6 shadow-soft border-l-4 border-yellow-500">
-          <p className="text-sm text-gray-600 mb-1">Pending</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.pending}</p>
-        </div>
-        <div className="bg-white rounded-xl p-6 shadow-soft border-l-4 border-green-500">
-          <p className="text-sm text-gray-600 mb-1">Confirmed</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.confirmed}</p>
-        </div>
-        <div className="bg-white rounded-xl p-6 shadow-soft border-l-4 border-blue-500">
-          <p className="text-sm text-gray-600 mb-1">Revenue</p>
-          <p className="text-3xl font-bold text-gray-900">${stats.revenue}</p>
-        </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="flex gap-4 mb-8 border-b border-gray-200">
-        {["overview", "services", "bookings", "revenue"].map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-6 py-3 font-medium border-b-2 transition-colors capitalize ${
-              activeTab === tab
-                ? "border-primary-600 text-primary-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-        <button
-          onClick={() => setActiveTab("queue")}
-          className={`px-6 py-3 font-medium border-b-2 transition-colors ${
-            activeTab === "queue"
-              ? "border-primary-600 text-primary-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Live Queue
-        </button>
-      </div>
+        {/* HEADER AREA */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 capitalize">{activeTab === 'overview' ? 'Dashboard' : activeTab}</h1>
+            <p className="text-gray-500 text-sm">Manage your salon operations</p>
+          </div>
+          {/* Contextual Actions */}
+          {activeTab === 'services' && (
+             <button onClick={() => { setEditingService(null); setServiceForm({ name: "", price: "", duration: "", category: "", description: "", image: "💇", images: [], imageFiles: [], currency: "USD" }); setShowServiceModal(true); }} className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-soft hover:bg-primary-500 transition-colors">
+               + Add Service
+             </button>
+          )}
+          {activeTab === 'queue' && (
+             <button onClick={() => setShowWalkInModal(true)} className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-soft hover:bg-primary-500 transition-colors">
+               + Add Walk-In
+             </button>
+          )}
+        </div>
 
-      {/* Tab Content */}
+        {/* 🎨 CONTENT RENDERING (Fresha-Styled Cards) */}
+        
       {activeTab === "overview" && (
         <div className="space-y-6">
-          <div className="bg-white rounded-xl p-6 shadow-soft">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button
-                onClick={() => {
-                  setEditingService(null);
-                  setServiceForm({ name: "", price: "", duration: "", category: "", description: "", image: "💇", images: [], imageFiles: [], currency: "USD" });
-                  setShowServiceModal(true);
-                }}
-                className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-all text-center"
-              >
-                <div className="text-2xl mb-2">➕</div>
-                <div className="font-medium text-gray-700">Add Service</div>
-              </button>
-              <button
-                onClick={() => setActiveTab("bookings")}
-                className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-all text-center"
-              >
-                <div className="text-2xl mb-2">📅</div>
-                <div className="font-medium text-gray-700">View Bookings</div>
-              </button>
-              <button
-                onClick={() => setActiveTab('availability')}
-                className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-500 hover:bg-primary-50 transition-all text-center"
-              >
-                <div className="text-2xl mb-2">⚙️</div>
-                <div className="font-medium text-gray-700">Manage Availability</div>
-              </button>
+            {/* Stats Row */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+               {[
+                 { label: 'Total Bookings', value: stats.totalBookings, color: 'text-blue-600' },
+                 { label: 'Pending', value: stats.pending, color: 'text-yellow-600' },
+                 { label: 'Confirmed', value: stats.confirmed, color: 'text-green-600' },
+                 { label: 'Revenue', value: `$${stats.revenue}`, color: 'text-primary-600' },
+               ].map((stat, i) => (
+                 <div key={i} className="bg-white p-5 rounded-xl border border-gray-100 shadow-soft">
+                    <p className="text-xs font-semibold text-gray-400 uppercase">{stat.label}</p>
+                    <p className={`text-2xl font-bold mt-1 ${stat.color}`}>{stat.value}</p>
+                 </div>
+               ))}
+            </div>
+            
+            {/* Quick Actions Card */}
+            <div className="bg-primary-600 rounded-xl p-8 text-white shadow-elevated">
+               <h3 className="text-xl font-bold mb-2">Ready to grow?</h3>
+               <p className="text-primary-100 mb-6 max-w-md">Manage your services or check your upcoming appointments directly from here.</p>
+               <div className="flex gap-3">
+                 <button onClick={() => setActiveTab("bookings")} className="bg-white text-primary-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors">View Calendar</button>
+                 <button onClick={() => setActiveTab("queue")} className="bg-primary-500 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary-400 transition-colors">Manage Queue</button>
+               </div>
             </div>
           </div>
-        </div>
       )}
 
-      {activeTab === "services" && (
-        <div>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900">My Services</h2>
-            <button
-              onClick={() => {
-                setEditingService(null);
-                setServiceForm({ name: "", price: "", duration: "", category: "", description: "", image: "💇", images: [], imageFiles: [], currency: "USD" });
-                setShowServiceModal(true);
-              }}
-              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              + Add Service
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {services.map(service => (
-              <div key={service._id} className="bg-white rounded-xl p-6 shadow-soft border border-gray-200">
-                <div className="text-4xl mb-4">{service.image || "💇"}</div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{service.name}</h3>
-                <p className="text-gray-600 mb-4">{service.description}</p>
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-2xl font-bold text-primary-600">${service.price}</span>
-                  <span className="text-sm text-gray-500">{service.duration} min</span>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setEditingService(service);
-                      setServiceForm({
-                        name: service.name,
-                        price: service.price,
-                        duration: service.duration,
-                        category: service.category,
-                        description: service.description,
-                        image: service.image || "💇",
-                        images: service.images || [],
-                        imageFiles: [],
-                        currency: service.currency || "USD"
-                      });
-                      setShowServiceModal(true);
-                    }}
-                    className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteService(service._id)}
-                    className="flex-1 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {activeTab === "bookings" && (
-        <div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-6">Bookings</h2>
-          <div className="space-y-4">
-            {bookings.length === 0 ? (
-              <div className="bg-white rounded-xl p-8 text-center shadow-soft">
-                <p className="text-gray-600">No bookings yet</p>
-              </div>
-            ) : (
-              bookings.map(booking => (
-                <div key={booking._id} className="bg-white rounded-xl p-6 shadow-soft border border-gray-200">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {booking.serviceId?.name || "Service"}
-                      </h3>
-                      <div className="mt-2 space-y-1">
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Customer:</span> {booking.userId?.name || "Unknown"}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Email:</span> {booking.userId?.email || "N/A"}
-                        </p>
-                        {booking.userId?.phone && (
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">Phone:</span> {booking.userId.phone}
-                          </p>
-                        )}
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Time:</span>{" "}
-                          {booking.startAt ?
-                            new Date(booking.startAt).toLocaleString('en-US', {
-                                timeZone: user?.providerProfile?.timezone || 'UTC',
-                                weekday: 'short',
-                                month: 'short', 
-                                day: 'numeric',
-                                hour: 'numeric',
-                                minute: '2-digit',
-                                hour12: true
-                            })
-                            : `${booking.date} at ${booking.time}`
-                          }
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Price:</span> ${booking.price || 0}
-                        </p>
-                      </div>
-                      <span className={`inline-block mt-3 px-3 py-1 rounded-full text-xs font-semibold border ${
-                        booking.status === "Confirmed" ? "bg-green-100 text-green-700 border-green-200" :
-                        booking.status === "Pending" ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
-                        booking.status === "Cancelled" ? "bg-red-100 text-red-700 border-red-200" :
-                        booking.status === "Rejected" ? "bg-gray-100 text-gray-700 border-gray-200" :
-                        "bg-gray-100 text-gray-700 border-gray-200"
-                      }`}>
-                        {booking.status}
-                      </span>
-                      {booking.status === "Cancelled" && booking.userId && (
-                        <p className="text-xs text-red-600 mt-2 italic">
-                          Cancelled by {booking.userId.name}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-2 ml-4">
-                      {booking.status === "Pending" && (
-                        <>
-                          <button
-                            onClick={() => handleBookingAction(booking._id, "Confirmed")}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                          >
-                            Accept
-                          </button>
-                          <button
-                            onClick={() => handleBookingAction(booking._id, "Rejected")}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-                      {["Pending", "Confirmed"].includes(booking.status) && (
-                        <button
-                          onClick={() => handleBookingAction(booking._id, "cancel")}
-                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
-                        >
-                          Cancel
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {activeTab === "availability" && (
-        <ProviderAvailability />
-      )}
-
-      {activeTab === "revenue" && (
-        <div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-6">Revenue Summary</h2>
-          <div className="bg-white rounded-xl p-6 shadow-soft">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Total Revenue</p>
-                <p className="text-3xl font-bold text-gray-900">${stats.revenue}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Completed Bookings</p>
-                <p className="text-3xl font-bold text-gray-900">
-                  {bookings.filter(b => b.status === "Completed").length}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Average Booking</p>
-                <p className="text-3xl font-bold text-gray-900">
-                  ${stats.revenue > 0
-                    ? Math.round(stats.revenue / bookings.filter(b => b.status === "Confirmed" || b.status === "Completed").length)
-                    : 0}
-                </p>
-              </div>
-            </div>
-            <div className="border-t border-gray-200 pt-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Recent Transactions</h3>
-              <div className="space-y-2">
-                {bookings
-                  .filter(b => b.status === "Confirmed" || b.status === "Completed")
-                  .slice(0, 10)
-                  .map(booking => (
-                    <div key={booking._id} className="flex justify-between items-center py-2 border-b border-gray-100">
-                      <div>
-                        <p className="font-medium text-gray-900">{booking.serviceId?.name || "Service"}</p>
-                        <p className="text-sm text-gray-600">
-                          {booking.startAt
-                            ? new Date(booking.startAt).toLocaleDateString()
-                            : booking.date}
-                        </p>
-                      </div>
-                      <p className="font-semibold text-primary-600">${booking.price || 0}</p>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === "queue" && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-semibold text-gray-900">Today's Digital Queue</h2>
-            <button 
-              onClick={() => setShowWalkInModal(true)}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-            >
-              + Add Walk-In
-            </button>
-          </div>
-
+        {/* QUEUE REDESIGN */}
+        {activeTab === "queue" && (
           <div className="grid gap-4">
             {queueData.length === 0 ? (
-              <div className="text-center p-8 bg-gray-50 rounded-xl">No customers in queue yet.</div>
+              <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+                <div className="text-4xl mb-3">☕</div>
+                <h3 className="text-lg font-medium text-gray-900">Queue is empty</h3>
+                <p className="text-gray-500">No customers waiting at the moment.</p>
+              </div>
             ) : (
               queueData.map((entry) => (
-                <div key={entry._id} className={`p-6 rounded-xl border flex justify-between items-center ${
-                  entry.status === 'IN_PROGRESS' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
-                }`}>
-                  <div className="flex items-center gap-6">
-                    <div className="bg-gray-900 text-white w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl">
+                <div key={entry._id} className="bg-white p-5 rounded-xl shadow-soft border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4 group hover:border-primary-100 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${entry.status === 'IN_PROGRESS' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                       #{entry.tokenNumber}
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg">{entry.customerName}</h3>
-                      <p className="text-gray-600 text-sm">
-                        {entry.serviceName} • {entry.isWalkIn ? <span className="text-indigo-600 font-medium">Walk-in</span> : "Appointment"}
+                      <h4 className="font-bold text-gray-900">{entry.customerName}</h4>
+                      <p className="text-sm text-gray-500 flex items-center gap-2">
+                        {entry.serviceName}
+                        {entry.isWalkIn && <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full uppercase tracking-wide">Walk-in</span>}
                       </p>
-                      <span className={`text-xs px-2 py-1 rounded-full mt-1 inline-block ${
-                        entry.status === 'WAITING' ? 'bg-yellow-100 text-yellow-800' :
-                        entry.status === 'IN_PROGRESS' ? 'bg-green-100 text-green-800' : 
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {entry.status}
-                      </span>
                     </div>
                   </div>
-
-                  <div className="flex gap-2">
-                    {entry.status === 'WAITING' && (
-                      <button 
-                        onClick={() => handleQueueStatus(entry._id, "IN_PROGRESS")}
-                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium"
-                      >
-                        Start Serving
-                      </button>
-                    )}
-                    {entry.status === 'IN_PROGRESS' && (
-                      <button 
-                        onClick={() => handleQueueStatus(entry._id, "COMPLETED")}
-                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium"
-                      >
-                        Complete
-                      </button>
-                    )}
-                    {entry.status !== 'COMPLETED' && (
-                      <button 
-                        onClick={() => handleQueueStatus(entry._id, "SKIPPED")}
-                        className="px-4 py-2 border border-gray-300 text-gray-600 rounded hover:bg-gray-50"
-                      >
-                        Skip
-                      </button>
-                    )}
+                  
+                  {/* Status Actions */}
+                  <div className="flex items-center gap-2">
+                     {entry.status === 'WAITING' && (
+                        <button onClick={() => handleQueueStatus(entry._id, "IN_PROGRESS")} className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-500 transition-colors">Start Service</button>
+                     )}
+                     {entry.status === 'IN_PROGRESS' && (
+                        <button onClick={() => handleQueueStatus(entry._id, "COMPLETED")} className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-500 transition-colors">Complete</button>
+                     )}
+                     {entry.status !== 'COMPLETED' && (
+                        <button onClick={() => handleQueueStatus(entry._id, "SKIPPED")} className="p-2 text-gray-400 hover:text-gray-600 transition-colors" title="Skip">
+                          <span className="text-xl">⏭️</span>
+                        </button>
+                     )}
                   </div>
                 </div>
               ))
             )}
           </div>
+        )}
 
-          {/* Walk In Modal */}
-          {showWalkInModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-              <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-                <h3 className="text-xl font-bold mb-4">Add Walk-In Customer</h3>
-                <form onSubmit={handleWalkInSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Customer Name</label>
-                    <input 
-                      className="w-full border p-2 rounded" 
-                      required
-                      value={walkInForm.customerName}
-                      onChange={e => setWalkInForm({...walkInForm, customerName: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Service</label>
-                    <input 
-                      className="w-full border p-2 rounded" 
-                      required
-                      value={walkInForm.serviceName}
-                      onChange={e => setWalkInForm({...walkInForm, serviceName: e.target.value})}
-                    />
-                  </div>
-                  <div className="flex gap-4">
-                    <button type="submit" className="flex-1 bg-indigo-600 text-white py-2 rounded">Add to Queue</button>
-                    <button type="button" onClick={() => setShowWalkInModal(false)} className="flex-1 bg-gray-200 text-gray-800 py-2 rounded">Cancel</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* SERVICES REDESIGN - Grid Card Style */}
+      {activeTab === "services" && (
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {services.map(service => (
+                 <div key={service._id} className="bg-white rounded-xl shadow-card hover:shadow-elevated transition-shadow p-0 overflow-hidden border border-gray-100">
+                    <div className="h-32 bg-gray-50 flex items-center justify-center text-4xl">
+                       {service.image || "💇"}
+                    </div>
+                    <div className="p-5">
+                       <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-bold text-gray-900">{service.name}</h3>
+                          <span className="font-bold text-primary-600">${service.price}</span>
+                       </div>
+                       <p className="text-sm text-gray-500 mb-4 line-clamp-2">{service.description}</p>
+                       <div className="flex gap-2 pt-4 border-t border-gray-50">
+                          <button onClick={() => { setEditingService(service); setServiceForm({
+                            name: service.name,
+                            price: service.price,
+                            duration: service.duration,
+                            category: service.category,
+                            description: service.description,
+                            image: service.image || "💇",
+                            images: service.images || [],
+                            imageFiles: [],
+                            currency: service.currency || "USD"
+                          }); setShowServiceModal(true); }} className="flex-1 text-xs font-bold text-gray-600 bg-gray-50 py-2 rounded hover:bg-gray-100 transition-colors">EDIT</button>
+                          <button onClick={() => handleDeleteService(service._id)} className="flex-1 text-xs font-bold text-red-600 bg-red-50 py-2 rounded hover:bg-red-100 transition-colors">DELETE</button>
+                       </div>
+                    </div>
+                 </div>
+            ))}
+           </div>
       )}
 
-      {/* Service Modal */}
+      {activeTab === "bookings" && (
+           <div className="bg-white rounded-xl shadow-card overflow-hidden border border-gray-100">
+              <div className="p-6 border-b border-gray-100"><h3 className="font-bold text-gray-900">Appointments</h3></div>
+               <div className="divide-y divide-gray-100">
+                  {bookings.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500">No bookings found.</div>
+                  ) : (
+                    bookings.map(booking => (
+                       <div key={booking._id} className="p-6 hover:bg-gray-50 transition-colors">
+                          <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                             <div>
+                                <h4 className="font-bold text-gray-900">{booking.serviceId?.name || "Service"}</h4>
+                                <div className="text-sm text-gray-500 mt-1">
+                                  <p>{booking.userId?.name || "Customer"}</p>
+                                  <p>{booking.startAt ? new Date(booking.startAt).toLocaleString() : `${booking.date} at ${booking.time}`}</p>
+                                </div>
+                                <div className="mt-2"><span className={`text-xs font-bold px-2 py-1 rounded ${
+                                  booking.status === 'Confirmed' ? 'bg-green-100 text-green-700' : 
+                                  booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 
+                                  booking.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }`}>{booking.status}</span></div>
+                             </div>
+                             <div className="flex gap-2">
+                               {booking.status === 'Pending' && (
+                                 <>
+                                  <button onClick={() => handleBookingAction(booking._id, "Confirmed")} className="text-xs bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 transition-colors">Accept</button>
+                                  <button onClick={() => handleBookingAction(booking._id, "Rejected")} className="text-xs bg-red-100 text-red-600 px-3 py-2 rounded hover:bg-red-200 transition-colors">Reject</button>
+                                 </>
+                               )}
+                               {["Pending", "Confirmed"].includes(booking.status) && (
+                                  <button onClick={() => handleBookingAction(booking._id, "cancel")} className="text-xs bg-gray-100 text-gray-600 px-3 py-2 rounded hover:bg-gray-200 transition-colors">Cancel</button>
+                               )}
+                             </div>
+                          </div>
+                       </div>
+                    ))
+                  )}
+               </div>
+           </div>
+      )}
+
+      {activeTab === "availability" && <ProviderAvailability />}
+
+      {activeTab === "revenue" && (
+         <div className="bg-white p-6 rounded-xl shadow-soft border border-gray-100">
+            <div className="text-center py-10">
+               <h2 className="text-4xl font-bold text-gray-900">${stats.revenue}</h2>
+               <p className="text-gray-500">Total Revenue</p>
+            </div>
+         </div>
+      )}
+
+    </main>
+
+    {/* Modals */}
       {showServiceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              {editingService ? "Edit Service" : "Add Service"}
-            </h2>
+         <div className="bg-white rounded-xl shadow-elevated w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4 text-gray-900">{editingService ? "Edit Service" : "New Service"}</h2>
             <form onSubmit={handleSaveService} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input
-                  type="text"
-                  value={serviceForm.name}
-                  onChange={(e) => setServiceForm({ ...serviceForm, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  required
-                />
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Name</label>
+                    <input className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 outline-none" value={serviceForm.name} onChange={e => setServiceForm({...serviceForm, name: e.target.value})} required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                <select
-                  value={serviceForm.category}
-                  onChange={(e) => setServiceForm({ ...serviceForm, category: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  required
-                >
-                  <option value="">Select a category</option>
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Category</label>
+                    <select value={serviceForm.category} onChange={e => setServiceForm({...serviceForm, category: e.target.value})} className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 outline-none" required>
+                      <option value="">Select Category</option>
+                      {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+                 <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
-                  <input
-                    type="number"
-                    value={serviceForm.price}
-                    onChange={(e) => setServiceForm({ ...serviceForm, price: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                    required
-                  />
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Price</label>
+                        <input type="number" className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 outline-none" value={serviceForm.price} onChange={e => setServiceForm({...serviceForm, price: e.target.value})} required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
-                  <select
-                    value={serviceForm.currency}
-                    onChange={(e) => setServiceForm({ ...serviceForm, currency: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  >
-                    {currencies.map(curr => (
-                      <option key={curr} value={curr}>{curr}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration (min)</label>
-                  <input
-                    type="number"
-                    value={serviceForm.duration}
-                    onChange={(e) => setServiceForm({ ...serviceForm, duration: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                    required
-                  />
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Duration (min)</label>
+                        <input type="number" className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 outline-none" value={serviceForm.duration} onChange={e => setServiceForm({...serviceForm, duration: e.target.value})} required />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  value={serviceForm.description}
-                  onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  rows="3"
-                  required
-                />
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Description</label>
+                    <textarea className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 outline-none" rows="3" value={serviceForm.description} onChange={e => setServiceForm({...serviceForm, description: e.target.value})} required />
               </div>
               <div>
                 <ImageUpload
@@ -690,28 +471,36 @@ export default function ProviderDashboard() {
                   maxImages={6}
                 />
               </div>
-              <div className="flex gap-4">
-                <button
-                  type="submit"
-                  className="flex-1 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowServiceModal(false);
-                    setEditingService(null);
-                  }}
-                  className="flex-1 px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                >
-                  Cancel
-                </button>
+                 <div className="flex gap-3 pt-4">
+                    <button type="submit" className="flex-1 bg-primary-600 text-white py-2.5 rounded-lg font-bold hover:bg-primary-700 transition-colors">Save Service</button>
+                    <button type="button" onClick={() => setShowServiceModal(false)} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors">Cancel</button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+    {showWalkInModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+         <div className="bg-white rounded-xl shadow-elevated w-full max-w-md p-6">
+            <h3 className="text-xl font-bold mb-4 text-gray-900">Add Walk-In</h3>
+            <form onSubmit={handleWalkInSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Customer Name</label>
+                    <input className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Customer Name" value={walkInForm.customerName} onChange={e => setWalkInForm({...walkInForm, customerName: e.target.value})} required />
+                </div>
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Service</label>
+                    <input className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Service" value={walkInForm.serviceName} onChange={e => setWalkInForm({...walkInForm, serviceName: e.target.value})} required />
+                </div>
+                <div className="flex gap-3 pt-2">
+                    <button type="submit" className="flex-1 bg-primary-600 text-white py-2.5 rounded-lg font-bold hover:bg-primary-700 transition-colors">Add to Queue</button>
+                    <button type="button" onClick={() => setShowWalkInModal(false)} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-lg font-bold hover:bg-gray-200 transition-colors">Cancel</button>
+                </div>
+            </form>
+         </div>
+      </div>
+    )}
     </div>
   );
 }

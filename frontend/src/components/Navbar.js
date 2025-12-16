@@ -5,16 +5,16 @@ export default function Navbar({ currentView, setView, onLogin, onSignup }) {
   const { user, isAuthenticated, logout } = useContext(AuthContext);
 
   return (
-    <nav className="bg-white/95 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200 shadow-soft">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center">
+    <nav className="bg-white sticky top-0 z-50 border-b border-gray-100 h-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+        <div className="flex justify-between h-full items-center">
           <div className="flex items-center cursor-pointer" onClick={() => setView('home')}>
             <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center text-white mr-3 shadow-soft">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <span className="text-2xl font-bold text-gray-900">
+            <span className="text-2xl font-extrabold text-gray-900 tracking-tight">
               BookApp
             </span>
           </div>

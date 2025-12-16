@@ -58,127 +58,76 @@ export default function CustomerDashboard() {
 
   return (
     <>
+      {/* Keep BookingModal Logic */}
       {serviceToBook && (
         <BookingModal
           service={serviceToBook}
           onClose={() => setServiceToBook(null)}
-          onConfirm={async () => {
-            // This will be called before the modal navigates away.
-            // We can refresh data here.
-            await fetchData();
-          }}
+          onConfirm={async () => { await fetchData(); }}
         />
       )}
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Customer Dashboard</h1>
-        <p className="text-gray-600">Browse services and manage your bookings</p>
-      </div>
 
-      {/* Tabs */}
-      <div className="flex gap-4 mb-8 border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab("browse")}
-          className={`px-6 py-3 font-medium border-b-2 transition-colors ${
-            activeTab === "browse"
-              ? "border-primary-600 text-primary-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Browse Services
-        </button>
-        <button
-          onClick={() => setActiveTab("bookings")}
-          className={`px-6 py-3 font-medium border-b-2 transition-colors ${
-            activeTab === "bookings"
-              ? "border-primary-600 text-primary-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          My Bookings ({bookings.length})
-        </button>
-      </div>
-
-      {activeTab === "browse" && (
-        <div className="space-y-8">
-          {/* Service Selection */}
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-900 mb-4">Select a Service</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {services.map(service => (
-                  <div
-                    key={service._id}
-                    onClick={() => {
-                    if (user?.role !== 'provider') {
-                        setServiceToBook(service);
-                        }
-                    }}
-                    className={`bg-white rounded-xl p-6 shadow-soft transition-all border border-gray-200 
-                  ${user?.role === 'provider' ? 'opacity-75 cursor-default' : 'hover:shadow-medium cursor-pointer hover:border-primary-300'}
-                    `}
-                  >
-                    <div className="text-4xl mb-4">{service.image || "💇"}</div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{service.name}</h3>
-                    <p className="text-gray-600 mb-4">{service.description}</p>
-                    <div className="flex justify-between items-center">
-                      <span className="text-2xl font-bold text-primary-600">${service.price}</span>
-                      <span className="text-sm text-gray-500">{service.duration} min</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+      <div className="max-w-5xl mx-auto px-4 py-12">
+        <div className="flex flex-col md:flex-row justify-between items-end mb-10">
+           <div>
+             <h1 className="text-3xl font-bold text-gray-900">Hello, {user?.name || 'Guest'}</h1>
+             <p className="text-gray-500 mt-1">Ready to book your next appointment?</p>
+           </div>
+           <div className="flex bg-gray-100 p-1 rounded-lg mt-4 md:mt-0">
+              <button onClick={() => setActiveTab('browse')} className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'browse' ? 'bg-white shadow-sm text-primary-600' : 'text-gray-500'}`}>Book New</button>
+              <button onClick={() => setActiveTab('bookings')} className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'bookings' ? 'bg-white shadow-sm text-primary-600' : 'text-gray-500'}`}>My Appointments</button>
+           </div>
         </div>
-      )}
 
-      {activeTab === "bookings" && (
-        <div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-4">My Bookings</h2>
-          {bookings.length === 0 ? (
-            <div className="bg-white rounded-xl p-8 text-center shadow-soft">
-              <p className="text-gray-600">No bookings yet</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {bookings.map(booking => (
-                <div
-                  key={booking._id}
-                  className="bg-white rounded-xl p-6 shadow-soft border border-gray-200"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {booking.serviceId?.name || "Service"}
-                      </h3>
-                      <p className="text-gray-600 mt-1">
-                        {booking.startAt
-                          ? new Date(booking.startAt).toLocaleString()
-                          : `${booking.date} at ${booking.time}`}
-                      </p>
-                      <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium ${
-                        booking.status === "Confirmed" ? "bg-green-100 text-green-700" :
-                        booking.status === "Pending" ? "bg-yellow-100 text-yellow-700" :
-                        "bg-gray-100 text-gray-700"
-                      }`}>
-                        {booking.status}
-                      </span>
+        {activeTab === 'browse' && (
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {services.map(service => (
+                 <div key={service._id} onClick={() => setServiceToBook(service)} className="group bg-white border border-gray-100 rounded-xl p-6 cursor-pointer hover:shadow-elevated hover:border-primary-100 transition-all">
+                    <div className="text-3xl mb-4 group-hover:scale-110 transition-transform duration-300">{service.image || "💇"}</div>
+                    <h3 className="font-bold text-gray-900">{service.name}</h3>
+                    <p className="text-sm text-gray-500 mt-1 mb-4">{service.duration} mins • {service.category || 'General'}</p>
+                    <div className="flex justify-between items-center border-t border-gray-50 pt-4">
+                       <span className="font-bold text-lg text-primary-600">${service.price}</span>
+                       <span className="text-xs font-bold bg-primary-50 text-primary-700 px-2 py-1 rounded">Book Now</span>
                     </div>
-                    {booking.status !== "Cancelled" && (
-                      <button
-                        onClick={() => handleCancelBooking(booking._id)}
-                        className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </div>
+                 </div>
               ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+           </div>
+        )}
+
+        {activeTab === 'bookings' && (
+           <div className="space-y-4">
+              {bookings.length === 0 ? (
+                 <div className="text-center py-16 bg-white rounded-2xl border border-dashed">
+                    <p className="text-gray-400 font-medium">No upcoming appointments</p>
+                    <button onClick={() => setActiveTab('browse')} className="text-primary-600 font-bold text-sm mt-2">Browse Services</button>
+                 </div>
+              ) : (
+                 bookings.map(booking => (
+                    <div key={booking._id} className="bg-white rounded-xl p-6 border-l-4 border-primary-500 shadow-soft flex justify-between items-center">
+                       <div>
+                          <p className="text-xs text-gray-500 font-bold uppercase tracking-wide mb-1">
+                             {booking.startAt ? new Date(booking.startAt).toLocaleDateString() : booking.date}
+                          </p>
+                          <h3 className="text-xl font-bold text-gray-900">{booking.serviceId?.name}</h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                             {booking.startAt ? new Date(booking.startAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : booking.time}
+                          </p>
+                       </div>
+                       <div className="text-right">
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 ${booking.status === 'Confirmed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                             {booking.status}
+                          </span>
+                          {booking.status !== 'Cancelled' && (
+                             <button onClick={() => handleCancelBooking(booking._id)} className="block text-xs text-red-500 hover:underline">Cancel</button>
+                          )}
+                       </div>
+                    </div>
+                 ))
+              )}
+           </div>
+        )}
+      </div>
     </>
   );
 }
