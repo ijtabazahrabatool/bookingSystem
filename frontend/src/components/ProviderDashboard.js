@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import { AuthContext } from "../context/AuthContext";
-import { getServices, createService, updateService, deleteService, getBookings, updateBookingStatus, cancelBooking } from "../services/api";
+import { getServices, createService, updateService, deleteService, getBookings, updateBookingStatus, cancelBooking, getQueue, addWalkIn, updateQueueStatus} from "../services/api";
 import { SkeletonCard } from "./LoadingSkeleton";
 import ProviderAvailability from "./ProviderAvailability";
 import { useToast } from "./Toast";
@@ -15,6 +15,9 @@ export default function ProviderDashboard() {
   const [loading, setLoading] = useState(true);
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [editingService, setEditingService] = useState(null);
+  const [queueData, setQueueData] = useState([]);
+  const [showWalkInModal, setShowWalkInModal] = useState(false);
+  const [walkInForm, setWalkInForm] = useState({ customerName: "", serviceName: "", duration: 30 });
   const [serviceForm, setServiceForm] = useState({
     name: "",
     price: "",
@@ -35,13 +38,7 @@ export default function ProviderDashboard() {
   
   const currencies = ["USD", "EUR", "GBP", "PKR", "INR", "AED", "SAR"];
 
-  useEffect(() => {
-    if (user) {
-      fetchData();
-    }
-  }, [user]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const providerId = user?.id || user?._id;
@@ -51,20 +48,28 @@ export default function ProviderDashboard() {
       }
 
       // Fetch services and bookings in parallel
-      const [servicesRes, bookingsRes] = await Promise.all([
+      const [servicesRes, bookingsRes, queueRes] = await Promise.all([
         getServices(`?providerId=${providerId}`).catch(() => ({ data: [] })),
-        getBookings().catch(() => ({ data: [] })) // Backend filters bookings by user role
+        getBookings().catch(() => ({ data: [] })),// Backend filters bookings by user role
+        getQueue().catch(() => ({ data: [] }))
       ]);
 
       setServices(servicesRes.data || []);
       setBookings(bookingsRes.data || []);
+      setQueueData(queueRes.data || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       showToast("Failed to load dashboard data.", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, showToast]);
+
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user, fetchData]);
 
   const handleSaveService = async (e) => {
     e.preventDefault();
@@ -132,6 +137,28 @@ export default function ProviderDashboard() {
       await fetchData();
     } catch (error) {
       showToast(error.response?.data?.message || "Failed to delete service", "error");
+    }
+  };
+
+  const handleWalkInSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await addWalkIn(walkInForm);
+      showToast("Walk-in added to queue", "success");
+      setShowWalkInModal(false);
+      setWalkInForm({ customerName: "", serviceName: "", duration: 30 });
+      fetchData();
+    } catch (err) {
+      showToast("Failed to add walk-in", "error");
+    }
+  };
+
+  const handleQueueStatus = async (id, status) => {
+    try {
+      await updateQueueStatus(id, status);
+      fetchData(); // Refresh list
+    } catch (err) {
+      showToast("Failed to update status", "error");
     }
   };
 
@@ -209,6 +236,16 @@ export default function ProviderDashboard() {
             {tab}
           </button>
         ))}
+        <button
+          onClick={() => setActiveTab("queue")}
+          className={`px-6 py-3 font-medium border-b-2 transition-colors ${
+            activeTab === "queue"
+              ? "border-primary-600 text-primary-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Live Queue
+        </button>
       </div>
 
       {/* Tab Content */}
@@ -452,6 +489,111 @@ export default function ProviderDashboard() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === "queue" && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-semibold text-gray-900">Today's Digital Queue</h2>
+            <button 
+              onClick={() => setShowWalkInModal(true)}
+              className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            >
+              + Add Walk-In
+            </button>
+          </div>
+
+          <div className="grid gap-4">
+            {queueData.length === 0 ? (
+              <div className="text-center p-8 bg-gray-50 rounded-xl">No customers in queue yet.</div>
+            ) : (
+              queueData.map((entry) => (
+                <div key={entry._id} className={`p-6 rounded-xl border flex justify-between items-center ${
+                  entry.status === 'IN_PROGRESS' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-6">
+                    <div className="bg-gray-900 text-white w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl">
+                      #{entry.tokenNumber}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg">{entry.customerName}</h3>
+                      <p className="text-gray-600 text-sm">
+                        {entry.serviceName} • {entry.isWalkIn ? <span className="text-indigo-600 font-medium">Walk-in</span> : "Appointment"}
+                      </p>
+                      <span className={`text-xs px-2 py-1 rounded-full mt-1 inline-block ${
+                        entry.status === 'WAITING' ? 'bg-yellow-100 text-yellow-800' :
+                        entry.status === 'IN_PROGRESS' ? 'bg-green-100 text-green-800' : 
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {entry.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {entry.status === 'WAITING' && (
+                      <button 
+                        onClick={() => handleQueueStatus(entry._id, "IN_PROGRESS")}
+                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium"
+                      >
+                        Start Serving
+                      </button>
+                    )}
+                    {entry.status === 'IN_PROGRESS' && (
+                      <button 
+                        onClick={() => handleQueueStatus(entry._id, "COMPLETED")}
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium"
+                      >
+                        Complete
+                      </button>
+                    )}
+                    {entry.status !== 'COMPLETED' && (
+                      <button 
+                        onClick={() => handleQueueStatus(entry._id, "SKIPPED")}
+                        className="px-4 py-2 border border-gray-300 text-gray-600 rounded hover:bg-gray-50"
+                      >
+                        Skip
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Walk In Modal */}
+          {showWalkInModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+              <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                <h3 className="text-xl font-bold mb-4">Add Walk-In Customer</h3>
+                <form onSubmit={handleWalkInSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Customer Name</label>
+                    <input 
+                      className="w-full border p-2 rounded" 
+                      required
+                      value={walkInForm.customerName}
+                      onChange={e => setWalkInForm({...walkInForm, customerName: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Service</label>
+                    <input 
+                      className="w-full border p-2 rounded" 
+                      required
+                      value={walkInForm.serviceName}
+                      onChange={e => setWalkInForm({...walkInForm, serviceName: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex gap-4">
+                    <button type="submit" className="flex-1 bg-indigo-600 text-white py-2 rounded">Add to Queue</button>
+                    <button type="button" onClick={() => setShowWalkInModal(false)} className="flex-1 bg-gray-200 text-gray-800 py-2 rounded">Cancel</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

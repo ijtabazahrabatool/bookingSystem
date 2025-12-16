@@ -10,6 +10,7 @@ const serviceRoutes = require("./routes/serviceRoutes");
 const authRoutes = require("./routes/authRoutes");
 const providerAvailabilityRoutes = require('./routes/providerAvailabilityRoutes');
 const slotRoutes = require('./routes/slotRoutes');
+const queueRoutes = require("./routes/queueRoutes");
 
 const cleanupExpiredHolds = require("./jobs/cleanupHolds");
 
@@ -64,6 +65,7 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/services", serviceRoutes);
 app.use('/api/provider/availability', providerAvailabilityRoutes);
 app.use('/api/slots', slotRoutes);
+app.use("/api/queue", queueRoutes);
 
 // 404 handler
 app.use((req, res) => {

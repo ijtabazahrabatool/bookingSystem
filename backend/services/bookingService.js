@@ -4,6 +4,7 @@ const Booking = require("../models/Booking");
 const { getSlotLock, setSlotLock, delSlotLock } = require("../lib/lock");
 const Service = require("../models/Service");
 const redisClient = require("../lib/redisClient"); // Use redisClient consistently
+const queueService = require("./queueService");
 
 const HOLD_TTL_SECONDS = parseInt(process.env.HOLD_TTL_SECONDS || "300", 10);
 
@@ -15,7 +16,7 @@ const HOLD_TTL_SECONDS = parseInt(process.env.HOLD_TTL_SECONDS || "300", 10);
  * @private
  * @throws {Error} If a conflicting booking is found.
  */
-async function _checkBookingConflict(bookingData) {
+async function checkBookingConflict(bookingData) {
   const query = {
     providerId: bookingData.providerId,
     startAt: { $lt: bookingData.endAt },
@@ -69,6 +70,54 @@ async function _acquireBookingLock(bookingData) {
 }
 
 /**
+ * Holds a slot for a user temporarily.
+ * @param {object} data - Booking data (providerId, serviceId, startAt, userId).
+ * @returns {Promise<object>} The held booking and token.
+ */
+async function holdSlot({ providerId, serviceId, startAt, userId }) {
+  const service = await Service.findById(serviceId);
+  if (!service) throw new Error("Service not found");
+
+  const startAtDate = new Date(startAt);
+  const endAtDate = new Date(startAtDate.getTime() + service.duration * 60000);
+
+  // 1. Check for conflicts
+  await checkBookingConflict({
+    providerId,
+    startAt: startAtDate,
+    endAt: endAtDate
+  });
+
+  // 2. Try to acquire Redis lock
+  const lockKey = `slot:${providerId}:${startAtDate.toISOString()}`;
+  const holdToken = uuidv4();
+  
+  const acquired = await setSlotLock(lockKey, holdToken, HOLD_TTL_SECONDS);
+  if (!acquired) {
+    const err = new Error("Slot is currently locked by another user");
+    err.status = 409;
+    throw err;
+  }
+
+  const holdExpiresAt = new Date(Date.now() + HOLD_TTL_SECONDS * 1000);
+
+  // 3. Create Held Booking
+  const booking = await Booking.create({
+    providerId,
+    serviceId,
+    userId: userId || null,
+    startAt: startAtDate,
+    endAt: endAtDate,
+    status: "Held",
+    holdToken,
+    holdExpiresAt,
+    price: service.price
+  });
+
+  return { booking, holdToken, holdExpiresAt };
+}
+
+/**
  * Creates a new booking.
  * @param {object} data - The booking data.
  * @param {object} user - The user creating the booking.
@@ -83,35 +132,20 @@ async function createBooking({
   
   const endAtDate = new Date(startAtDate.getTime() + service.duration * 60000);
 
-  // Check Conflict (Ignoring our own holdToken)
-  const conflictQuery = {
+  // Check Conflict
+  await checkBookingConflict({
     providerId,
-    status: { $in: ["Confirmed", "Pending", "Held"] },
-    $or: [
-      { startAt: { $lt: endAtDate }, endAt: { $gt: startAtDate } }
-    ]
-  };
-
-  if (holdToken) {
-    conflictQuery.holdToken = { $ne: holdToken };
-  }
-
-  const existingBooking = await Booking.findOne(conflictQuery);
-  if (existingBooking) {
-    throw new Error("Slot is already booked.");
-  }
+    startAt: startAtDate,
+    endAt: endAtDate,
+    holdToken
+  });
 
   // Handle Redis Lock
-  const lockKey = `slot:${providerId}:${startAtDate.toISOString()}`;
-  const currentLockValue = await redisClient.get(lockKey);
-
-  if (currentLockValue) {
-    if (holdToken && currentLockValue === holdToken) {
-      await redisClient.del(lockKey);
-    } else {
-      throw new Error("This slot is temporarily held by another customer.");
-    }
-  }
+  await _acquireBookingLock({
+    providerId,
+    startAt: startAtDate,
+    holdToken
+  });
 
   // Create Booking as PENDING
   const newBooking = await Booking.create({
@@ -172,6 +206,11 @@ const updateBookingStatus = async (id, status) => {
     { path: "serviceId" },
     { path: "userId", select: "name email" },
   ]);
+
+  if (status === "Confirmed") {
+    await queueService.addBookingToQueue(booking);
+  }
+
   return booking;
 };
 
@@ -280,8 +319,10 @@ const deleteBooking = async (id, userId, userRole) => {
 
 module.exports = {
   createBooking,
+  holdSlot,
   getBookingsForUser,
   updateBookingStatus,
   cancelBooking,
   deleteBooking,
+  checkBookingConflict,
 };

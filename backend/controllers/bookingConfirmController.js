@@ -2,6 +2,7 @@
 const Booking = require("../models/Booking");
 const { delSlotLock } = require("../lib/lock");
 const nodemailer = require("nodemailer");
+const queueService = require("../services/queueService");
 
 // Get io instance - will be set by server
 let io = null;
@@ -31,6 +32,13 @@ async function confirmBooking(req, res) {
 
     if (!booking) {
       return res.status(409).json({ message: "Hold expired or invalid. Please select the slot again." });
+    }
+    try {
+        // We need to populate serviceId name for the snapshot
+        const populatedBooking = await booking.populate("serviceId");
+        await queueService.addBookingToQueue(populatedBooking);
+    } catch (qError) {
+        console.error("Queue auto-add warning:", qError);
     }
 
     // Remove redis lock immediately

@@ -92,4 +92,6 @@ export const getProviderSlots = (providerId, date, serviceId = null) => {
 // Provider Availability API
 export const getAvailability = () => api.get("/provider/availability");
 export const setAvailability = (data) => api.post("/provider/availability", data);
-
+export const getQueue = () => api.get("/queue/today");
+export const addWalkIn = (data) => api.post("/queue/walkin", data);
+export const updateQueueStatus = (id, status) => api.put(`/queue/${id}/status`, { status });
